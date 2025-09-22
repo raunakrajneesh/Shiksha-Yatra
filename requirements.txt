@@ -1,11 +1,11 @@
 streamlit
-streamlit_lottie
-sqlite3
-pandas
-plotly
+streamlit-chat
 google-generativeai
 python-dotenv
+plotly
+pandas
+datetime
+pillow
 requests
-googletrans==4.0.0rc1
 bcrypt
-Pillow
+googletrans==4.0.0-rc1
