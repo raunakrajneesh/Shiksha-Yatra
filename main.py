@@ -1,3 +1,4 @@
+# main.py
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -32,7 +33,7 @@ st.set_page_config(
 def setup_gemini():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        st.error("Please add it to your environment variables.")
+        st.error("Please add a valid GEMINI_API_KEY to your environment variables.")
         st.stop()
     genai.configure(api_key=api_key)
     return genai.GenerativeModel('gemini-2.0-flash')
@@ -479,6 +480,12 @@ def get_game_scores(user_id):
 
 # Math Game Functions
 def math_quiz_game():
+    if not st.session_state.user:
+        st.error("Please log in to access this game.")
+        st.session_state.page = "login"
+        st.stop()
+    
+    user_lang = st.session_state.user['language']
     st.markdown("<h3 class='sub-header'>Math Quiz Challenge</h3>", unsafe_allow_html=True)
     
     if 'math_score' not in st.session_state:
@@ -491,7 +498,6 @@ def math_quiz_game():
         question_data = st.session_state.math_questions[st.session_state.math_question]
         
         # Translate question and options if needed
-        user_lang = st.session_state.user['language']
         if user_lang != 'English':
             question = translate_from_english(question_data['question'], LANGUAGE_MAPPING[user_lang])
             options = [translate_from_english(opt, LANGUAGE_MAPPING[user_lang]) for opt in question_data['options']]
@@ -615,6 +621,12 @@ def generate_math_questions():
     return questions
 
 def science_quiz_game():
+    if not st.session_state.user:
+        st.error("Please log in to access this game.")
+        st.session_state.page = "login"
+        st.stop()
+    
+    user_lang = st.session_state.user['language']
     st.markdown("<h3 class='sub-header'>Science Quiz Challenge</h3>", unsafe_allow_html=True)
     
     if 'science_score' not in st.session_state:
@@ -627,7 +639,6 @@ def science_quiz_game():
         question_data = st.session_state.science_questions[st.session_state.science_question]
         
         # Translate question and options if needed
-        user_lang = st.session_state.user['language']
         if user_lang != 'English':
             question = translate_from_english(question_data['question'], LANGUAGE_MAPPING[user_lang])
             options = [translate_from_english(opt, LANGUAGE_MAPPING[user_lang]) for opt in question_data['options']]
@@ -751,6 +762,12 @@ def generate_science_questions():
     return questions
 
 def memory_match_game():
+    if not st.session_state.user:
+        st.error("Please log in to access this game.")
+        st.session_state.page = "login"
+        st.stop()
+    
+    user_lang = st.session_state.user['language']
     st.markdown("<h3 class='sub-header'>STEM Memory Match</h3>", unsafe_allow_html=True)
     
     if 'memory_cards' not in st.session_state:
@@ -764,7 +781,6 @@ def memory_match_game():
         st.session_state.memory_moves = 0
         st.session_state.memory_matches = 0
     
-    user_lang = st.session_state.user['language']
     moves_text = translate_from_english("Moves", LANGUAGE_MAPPING[user_lang])
     matches_text = translate_from_english("Matches", LANGUAGE_MAPPING[user_lang])
     
@@ -900,6 +916,11 @@ def register_page():
             st.rerun()
 
 def dashboard_page():
+    if not st.session_state.user:
+        st.error("Please log in to access this page.")
+        st.session_state.page = "login"
+        st.stop()
+        
     user_lang = st.session_state.user['language']
     welcome_text = translate_from_english(f"Welcome, {st.session_state.user['name']}!", LANGUAGE_MAPPING[user_lang])
     st.markdown(f"<h1 class='main-header'>{welcome_text}</h1>", unsafe_allow_html=True)
@@ -992,6 +1013,11 @@ def dashboard_page():
         st.info(translate_from_english("No recent activity. Start a conversation with your AI tutor!", LANGUAGE_MAPPING[user_lang]))
 
 def subjects_page():
+    if not st.session_state.user:
+        st.error("Please log in to access this page.")
+        st.session_state.page = "login"
+        st.stop()
+        
     user_lang = st.session_state.user['language']
     st.markdown(f"<h1 class='main-header'>{translate_from_english('Study Subjects', LANGUAGE_MAPPING[user_lang])}</h1>", unsafe_allow_html=True)
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Choose a subject to study', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
@@ -1022,6 +1048,11 @@ def subjects_page():
                 st.rerun()
 
 def chat_page():
+    if not st.session_state.user:
+        st.error("Please log in to access this page.")
+        st.session_state.page = "login"
+        st.stop()
+    
     user_lang = st.session_state.user['language']
     subject = st.session_state.get('current_subject', 'General Help')
     subject_translated = translate_from_english(subject, LANGUAGE_MAPPING[user_lang])
@@ -1143,88 +1174,12 @@ def games_page():
         st.session_state.page = "dashboard"
         st.rerun()
 
-
-# Math Game Functions
-def math_quiz_game():
-    user_lang = st.session_state.user['language'] # Define user_lang here
-    st.markdown("<h3 class='sub-header'>Math Quiz Challenge</h3>", unsafe_allow_html=True)
-    
-    if 'math_score' not in st.session_state:
-        st.session_state.math_score = 0
-        st.session_state.math_question = 0
-        st.session_state.math_questions = generate_math_questions()
-        st.session_state.math_correct = None
-    
-    if st.session_state.math_question < len(st.session_state.math_questions):
-        question_data = st.session_state.math_questions[st.session_state.math_question]
-        
-        # Translate question and options if needed
-        if user_lang != 'English':
-            question = translate_from_english(question_data['question'], LANGUAGE_MAPPING[user_lang])
-            options = [translate_from_english(opt, LANGUAGE_MAPPING[user_lang]) for opt in question_data['options']]
-            answer = translate_from_english(question_data['answer'], LANGUAGE_MAPPING[user_lang])
-        else:
-            question = question_data['question']
-            options = question_data['options']
-            answer = question_data['answer']
-        # ... (rest of the math_quiz_game function remains the same) ...
-        # ... (all other functions remain the same) ...
-    else:
-        # ... (rest of the math_quiz_game function remains the same) ...
-        pass
-        
-# Science Game Functions
-def science_quiz_game():
-    user_lang = st.session_state.user['language'] # Define user_lang here
-    st.markdown("<h3 class='sub-header'>Science Quiz Challenge</h3>", unsafe_allow_html=True)
-
-    if 'science_score' not in st.session_state:
-        st.session_state.science_score = 0
-        st.session_state.science_question = 0
-        st.session_state.science_questions = generate_science_questions()
-        st.session_state.science_correct = None
-    
-    if st.session_state.science_question < len(st.session_state.science_questions):
-        question_data = st.session_state.science_questions[st.session_state.science_question]
-        
-        # Translate question and options if needed
-        if user_lang != 'English':
-            question = translate_from_english(question_data['question'], LANGUAGE_MAPPING[user_lang])
-            options = [translate_from_english(opt, LANGUAGE_MAPPING[user_lang]) for opt in question_data['options']]
-            answer = translate_from_english(question_data['answer'], LANGUAGE_MAPPING[user_lang])
-        else:
-            question = question_data['question']
-            options = question_data['options']
-            answer = question_data['answer']
-        # ... (rest of the science_quiz_game function remains the same) ...
-    else:
-        # ... (rest of the science_quiz_game function remains the same) ...
-        pass
-
-# Memory Match Game Functions
-def memory_match_game():
-    user_lang = st.session_state.user['language'] # Define user_lang here
-    st.markdown("<h3 class='sub-header'>STEM Memory Match</h3>", unsafe_allow_html=True)
-    
-    if 'memory_cards' not in st.session_state:
-        # Initialize the memory game
-        symbols = ['π', '√', '∞', 'α', 'β', '∫', '∑', 'Δ']
-        st.session_state.memory_cards = symbols + symbols
-        random.shuffle(st.session_state.memory_cards)
-        st.session_state.memory_flipped = [False] * 16
-        st.session_state.memory_matched = [False] * 16
-        st.session_state.memory_first_selection = None
-        st.session_state.memory_moves = 0
-        st.session_state.memory_matches = 0
-    
-    moves_text = translate_from_english("Moves", LANGUAGE_MAPPING[user_lang])
-    matches_text = translate_from_english("Matches", LANGUAGE_MAPPING[user_lang])
-    
-    st.markdown(f"**{moves_text}:** {st.session_state.memory_moves} | **{matches_text}:** {st.session_state.memory_matches}/8")
-    # ... (rest of the memory_match_game function remains the same) ...
-    pass
-
 def offline_content_page():
+    if not st.session_state.user:
+        st.error("Please log in to access this page.")
+        st.session_state.page = "login"
+        st.stop()
+    
     user_lang = st.session_state.user['language']
     st.markdown(f"<h1 class='main-header'>{translate_from_english('Offline Content', LANGUAGE_MAPPING[user_lang])}</h1>", unsafe_allow_html=True)
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Download content for offline study', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
@@ -1275,6 +1230,11 @@ def offline_content_page():
         st.rerun()
 
 def profile_page():
+    if not st.session_state.user:
+        st.error("Please log in to access this page.")
+        st.session_state.page = "login"
+        st.stop()
+        
     user_lang = st.session_state.user['language']
     st.markdown(f"<h1 class='main-header'>{translate_from_english('Your Profile', LANGUAGE_MAPPING[user_lang])}</h1>", unsafe_allow_html=True)
     
@@ -1335,7 +1295,7 @@ def profile_page():
                 if name == st.session_state.user['name']:
                     st.success(translate_from_english("That's you!", LANGUAGE_MAPPING[user_lang]))
         else:
-            st.info(translate_from_english("No leaderboard data available.", LANGUAGE_L.MAP.PING[user_lang]))
+            st.info(translate_from_english("No leaderboard data available.", LANGUAGE_MAPPING[user_lang]))
         st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button(translate_from_english("Back to Dashboard", LANGUAGE_MAPPING[user_lang])):
@@ -1343,6 +1303,11 @@ def profile_page():
         st.rerun()
 
 def about_page():
+    if not st.session_state.user:
+        st.error("Please log in to access this page.")
+        st.session_state.page = "login"
+        st.stop()
+        
     user_lang = st.session_state.user['language']
     st.markdown(f"<h1 class='main-header'>{translate_from_english('About Rural EduGamify', LANGUAGE_MAPPING[user_lang])}</h1>", unsafe_allow_html=True)
     
@@ -1395,6 +1360,11 @@ def about_page():
         st.markdown(f"<div class='card' style='text-align: center;'>{team_content}</div>", unsafe_allow_html=True)
 
 def contact_page():
+    if not st.session_state.user:
+        st.error("Please log in to access this page.")
+        st.session_state.page = "login"
+        st.stop()
+        
     user_lang = st.session_state.user['language']
     st.markdown(f"<h1 class='main-header'>{translate_from_english('Contact Us', LANGUAGE_MAPPING[user_lang])}</h1>", unsafe_allow_html=True)
     
@@ -1435,7 +1405,7 @@ def main():
     if st.session_state.user:
         user_lang = st.session_state.user['language']
         with st.sidebar:
-            st.image("https://ideogram.ai/assets/image/lossless/response/Y4_3nbqYQOu7h4NNJjaPkw", use_column_width=True)
+            st.image("https://ideogram.ai/assets/image/lossless/response/Y4_3nbqYQOu7h4NNJjaPkw", use_container_width=True)
             welcome_text = translate_from_english(f"Welcome, {st.session_state.user['name']}!", LANGUAGE_MAPPING[user_lang])
             st.write(welcome_text)
             
@@ -1447,31 +1417,31 @@ def main():
             
             st.divider()
             
-            if st.button(translate_from_english("🏠 Home", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("🏠 Home", LANGUAGE_MAPPING[user_lang]), key="sidebar_home"):
                 st.session_state.page = "dashboard"
                 st.rerun()
-            if st.button(translate_from_english("📚 Study Subjects", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("📚 Study Subjects", LANGUAGE_MAPPING[user_lang]), key="sidebar_subjects"):
                 st.session_state.page = "subjects"
                 st.rerun()
-            if st.button(translate_from_english("💬 AI Tutor", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("💬 AI Tutor", LANGUAGE_MAPPING[user_lang]), key="sidebar_chat"):
                 st.session_state.page = "chat"
                 st.rerun()
-            if st.button(translate_from_english("🎮 Educational Games", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("🎮 Educational Games", LANGUAGE_MAPPING[user_lang]), key="sidebar_games"):
                 st.session_state.page = "games"
                 st.rerun()
-            if st.button(translate_from_english("📥 Offline Content", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("📥 Offline Content", LANGUAGE_MAPPING[user_lang]), key="sidebar_offline"):
                 st.session_state.page = "offline"
                 st.rerun()
-            if st.button(translate_from_english("📊 Profile & Badges", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("📊 Profile & Badges", LANGUAGE_MAPPING[user_lang]), key="sidebar_profile"):
                 st.session_state.page = "profile"
                 st.rerun()
-            if st.button(translate_from_english("ℹ️ About", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("ℹ️ About", LANGUAGE_MAPPING[user_lang]), key="sidebar_about"):
                 st.session_state.page = "about"
                 st.rerun()
-            if st.button(translate_from_english("📞 Contact", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("📞 Contact", LANGUAGE_MAPPING[user_lang]), key="sidebar_contact"):
                 st.session_state.page = "contact"
                 st.rerun()
-            if st.button(translate_from_english("🚪 Logout", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("🚪 Logout", LANGUAGE_MAPPING[user_lang]), key="sidebar_logout"):
                 st.session_state.user = None
                 st.session_state.page = "login"
                 st.session_state.chat_history = []
