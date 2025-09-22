@@ -1,4 +1,4 @@
-# main.py (updated with multilanguage support)
+# main.py (updated with multilanguage support, light theme, and back button)
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -148,88 +148,98 @@ conn = init_db()
 model = setup_gemini()
 translator = setup_translator()
 
-# Custom CSS
+# Custom CSS for light theme
 def local_css():
     st.markdown("""
         <style>
- .main-header {
+        body {
+            background-color: #f0f2f6; /* Light gray background */
+            color: #333333; /* Darker text for contrast */
+        }
+        .main-header {
             font-size: 3rem;
-            color: #4809b7;
+            color: #1a237e; /* Darker blue for main headers */
             text-align: center;
             margin-bottom: 2rem;
         }
         .sub-header {
             font-size: 1.8rem;
-            color: #12438c;
+            color: #3f51b5; /* Medium blue for sub-headers */
             margin-bottom: 1rem;
         }
         .card {
             padding: 20px;
             border-radius: 10px;
-             color: #ddfafd;
+            color: #333333;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             margin-bottom: 20px;
-            background-color: rgb(6, 43, 67);
+            background-color: #ffffff; /* White card background */
+            border: 1px solid #e0e0e0;
         }
         .sidebar .sidebar-content {
-            background-color: #020619;
+            background-color: #ffffff; /* White sidebar */
+            color: #333333;
         }
         .stButton>button {
-            background-color: #0e0227;
+            background-color: #3f51b5; /* Blue buttons */
             color: white;
             border-radius: 8px;
             padding: 10px 24px;
+            border: none;
+        }
+        .stButton>button:hover {
+            background-color: #303f9f; /* Darker blue on hover */
         }
         .chat-message {
             padding: 1.5rem;
-             color: #180539;
             border-radius: 0.5rem;
             margin-bottom: 1rem;
             display: flex;
             flex-direction: column;
         }
         .chat-message.user {
-            background-color: #E3F2FD;
+            background-color: #e3f2fd; /* Light blue for user messages */
             margin-left: 20%;
-             color: #180539;
+            color: #333333;
         }
         .chat-message.assistant {
-            background-color: #BBDEFB;
+            background-color: #bbdefb; /* Slightly darker light blue for assistant messages */
             margin-right: 20%;
-             color: #180539;
+            color: #333333;
         }
         .badge {
             display: inline-block;
             padding: 5px 10px;
             border-radius: 15px;
-            background-color: #FFD700;
-            color: #000;
+            background-color: #ffeb3b; /* Yellow badge */
+            color: #333333;
             margin: 5px;
             font-weight: bold;
         }
         .progress-bar {
             height: 20px;
-            background-color: #E0E0E0;
+            background-color: #e0e0e0;
             border-radius: 10px;
-               color: #180539;
             margin: 10px 0;
+            overflow: hidden;
         }
         .progress-fill {
             height: 100%;
-            background-color: #4CAF50;
+            background-color: #4caf50; /* Green progress fill */
             border-radius: 10px;
             text-align: center;
             color: white;
             line-height: 20px;
+            white-space: nowrap;
         }
         .subject-card {
             cursor: pointer;
-               color: #180539;
             transition: all 0.3s ease;
+            color: #333333;
         }
         .subject-card:hover {
-            transform: scale(1.05);
-               color: #32116b;
+            transform: scale(1.03);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
         .math-game-grid {
             display: grid;
@@ -245,21 +255,26 @@ def local_css():
             justify-content: center;
             font-size: 24px;
             font-weight: bold;
-            background-color: #BBDEFB;
-            border: 2px solid #1E88E5;
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
             border-radius: 5px;
             cursor: pointer;
+            color: #333333;
         }
         .science-quiz-option {
             padding: 10px;
             margin: 5px 0;
-            background-color: #C8E6C9;
-            border: 1px solid #4CAF50;
+            background-color: #e8f5e9;
+            border: 1px solid #4caf50;
             border-radius: 5px;
             cursor: pointer;
+            color: #333333;
         }
         .science-quiz-option:hover {
-            background-color: #A5D6A7;
+            background-color: #c8e6c9;
+        }
+        .stSidebar {
+            padding-top: 20px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -838,6 +853,14 @@ def increment_download_count(content_id):
     c.execute("UPDATE offline_content SET download_count = download_count + 1 WHERE id = ?", (content_id,))
     conn.commit()
 
+# Back button function
+def back_button(target_page="dashboard", label_key="back_to_dashboard_label"):
+    user_lang = st.session_state.user['language']
+    translated_label = translate_from_english("⬅️ Back", LANGUAGE_MAPPING[user_lang])
+    if st.button(translated_label, key=label_key):
+        st.session_state.page = target_page
+        st.rerun()
+
 # Page functions
 def login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -897,9 +920,7 @@ def register_page():
                 else:
                     st.error("Username already exists. Please choose a different one.")
         
-        if st.button("Back to Login"):
-            st.session_state.page = "login"
-            st.rerun()
+        back_button(target_page="login", label_key="back_to_login_from_register")
 
 def dashboard_page():
     user_lang = st.session_state.user['language']
@@ -1022,6 +1043,8 @@ def subjects_page():
                 st.session_state.current_subject = subject['name']
                 st.session_state.page = "chat"
                 st.rerun()
+    
+    back_button(target_page="dashboard", label_key="back_to_dashboard_from_subjects")
 
 def chat_page():
     user_lang = st.session_state.user['language']
@@ -1075,9 +1098,7 @@ def chat_page():
         
         st.rerun()
     
-    if st.button(translate_from_english("Back to Subjects", LANGUAGE_MAPPING[user_lang])):
-        st.session_state.page = "subjects"
-        st.rerun()
+    back_button(target_page="subjects", label_key="back_to_subjects_from_chat")
 
 def games_page():
     user_lang = st.session_state.user['language']
@@ -1121,7 +1142,7 @@ def games_page():
         elif st.session_state.current_game == "Memory Match":
             memory_match_game()
         
-        if st.button(translate_from_english("Back to Games Menu", LANGUAGE_MAPPING[user_lang])):
+        if st.button(translate_from_english("Back to Games Menu", LANGUAGE_MAPPING[user_lang]), key="back_to_games_menu"):
             del st.session_state.current_game
             st.rerun()
     
@@ -1135,9 +1156,7 @@ def games_page():
     else:
         st.info(translate_from_english("No game scores yet. Play some games to earn points!", LANGUAGE_MAPPING[user_lang]))
     
-    if st.button(translate_from_english("Back to Dashboard", LANGUAGE_MAPPING[user_lang])):
-        st.session_state.page = "dashboard"
-        st.rerun()
+    back_button(target_page="dashboard", label_key="back_to_dashboard_from_games")
 
 def offline_content_page():
     user_lang = st.session_state.user['language']
@@ -1168,7 +1187,7 @@ def offline_content_page():
     
     if content:
         for item in content:
-            id, title, subject, content_type, content, grade_level, language, download_count = item
+            id, title, subject, content_type, content_data, grade_level, language, download_count = item
             
             st.markdown(f"""
             <div class='card'>
@@ -1185,9 +1204,7 @@ def offline_content_page():
     else:
         st.info(translate_from_english("No offline content available for your filters.", LANGUAGE_MAPPING[user_lang]))
     
-    if st.button(translate_from_english("Back to Dashboard", LANGUAGE_MAPPING[user_lang])):
-        st.session_state.page = "dashboard"
-        st.rerun()
+    back_button(target_page="dashboard", label_key="back_to_dashboard_from_offline")
 
 def profile_page():
     user_lang = st.session_state.user['language']
@@ -1253,9 +1270,7 @@ def profile_page():
             st.info(translate_from_english("No leaderboard data available.", LANGUAGE_MAPPING[user_lang]))
         st.markdown("</div>", unsafe_allow_html=True)
     
-    if st.button(translate_from_english("Back to Dashboard", LANGUAGE_MAPPING[user_lang])):
-        st.session_state.page = "dashboard"
-        st.rerun()
+    back_button(target_page="dashboard", label_key="back_to_dashboard_from_profile")
 
 def about_page():
     user_lang = st.session_state.user['language']
@@ -1263,7 +1278,7 @@ def about_page():
     
     about_content = translate_from_english("""
     <h3>Empowering Rural Education Through Gamification</h3>
-    <p>Rural EduGamify is a innovative platform designed to enhance learning outcomes for students in rural schools (grades 6-12), with a focus on STEM subjects. Our platform uses interactive games, multilingual content, and offline access to engage students with limited internet connectivity.</p>
+    <p>Shiksha Yatra (Rural EduGamify) is an innovative platform designed to enhance learning outcomes for students in rural schools (grades 6-12), with a focus on STEM subjects. Our platform uses interactive games, multilingual content, and offline access to engage students with limited internet connectivity.</p>
     
     <h4>Key Features:</h4>
     <ul>
@@ -1308,6 +1323,8 @@ def about_page():
         <p>Local organizations helping implement our platform in rural schools</p>
         """, LANGUAGE_MAPPING[user_lang])
         st.markdown(f"<div class='card' style='text-align: center;'>{team_content}</div>", unsafe_allow_html=True)
+    
+    back_button(target_page="dashboard", label_key="back_to_dashboard_from_about")
 
 def contact_page():
     user_lang = st.session_state.user['language']
@@ -1318,7 +1335,7 @@ def contact_page():
     <p>We'd love to hear from you! Whether you have questions, feedback, or need support, please don't hesitate to reach out.</p>
     
     <h4>Contact Information:</h4>
-    <p><b>Email:</b> support@ruraledugamify.org</p>
+    <p><b>Email:</b> support@shikshayatra.org</p>
     <p><b>Phone:</b> +91-XXX-XXX-XXXX</p>
     <p><b>Address:</b> Electronics & IT Department, Government of Odisha, India</p>
     
@@ -1335,6 +1352,8 @@ def contact_page():
         
         if submitted:
             st.success(translate_from_english("Thank you for your message! We'll get back to you soon.", LANGUAGE_MAPPING[user_lang]))
+    
+    back_button(target_page="dashboard", label_key="back_to_dashboard_from_contact")
 
 # Main app
 def main():
@@ -1362,13 +1381,13 @@ def main():
             
             st.divider()
             
-            if st.button(translate_from_english("🏠 Dashboard", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("🏠 Dashboard", LANGUAGE_MAPPING[user_lang]), key="sidebar_dashboard"):
                 st.session_state.page = "dashboard"
                 st.rerun()
-            if st.button(translate_from_english("📚 Study Subjects", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("📚 Study Subjects", LANGUAGE_MAPPING[user_lang]), key="sidebar_subjects"):
                 st.session_state.page = "subjects"
                 st.rerun()
-            if st.button(translate_from_english("💬 AI Tutor", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("💬 AI Tutor", LANGUAGE_MAPPING[user_lang
                 st.session_state.page = "chat"
                 st.rerun()
             if st.button(translate_from_english("🎮 Educational Games", LANGUAGE_MAPPING[user_lang])):
