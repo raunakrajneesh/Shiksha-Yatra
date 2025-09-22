@@ -1387,7 +1387,7 @@ def main():
             if st.button(translate_from_english("📚 Study Subjects", LANGUAGE_MAPPING[user_lang]), key="sidebar_subjects"):
                 st.session_state.page = "subjects"
                 st.rerun()
-            if st.button(translate_from_english("💬 AI Tutor", LANGUAGE_MAPPING[user_lang
+            if st.button(translate_from_english("💬 AI Tutor", LANGUAGE_MAPPING[user_lang]), key="sidebar_chat"):
                 st.session_state.page = "chat"
                 st.rerun()
             if st.button(translate_from_english("🎮 Educational Games", LANGUAGE_MAPPING[user_lang])):
