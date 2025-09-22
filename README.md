@@ -1,2 +1,2 @@
-# Shiksha-Yatra
+# ShiksYatra
 a coding site
