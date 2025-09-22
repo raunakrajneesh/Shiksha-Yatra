@@ -1,4 +1,3 @@
-# main.py (updated with animations)
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -18,16 +17,13 @@ import random
 import math
 from googletrans import Translator, LANGUAGES
 
-# Import Lottie for animations
-from streamlit_lottie import st_lottie
-
 # Load environment variables
 load_dotenv()
 
 # Configure page settings
 st.set_page_config(
     page_title="Shiksha Yatra",
-    page_icon="📚",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -44,19 +40,6 @@ def setup_gemini():
 # Initialize translator
 def setup_translator():
     return Translator()
-
-# Lottie animation loader
-def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-# Load a few Lottie animations from the web
-LOTTIE_WELCOME = load_lottieurl("https://lottiefiles.com/animations/school-WwL05096wE")
-LOTTIE_LOADING = load_lottieurl("https://lottiefiles.com/animations/loading-animation-X2U3qH54a9")
-LOTTIE_BADGE = load_lottieurl("https://lottiefiles.com/animations/badge-X2U3qH54a9")
-LOTTIE_CELEBRATE = load_lottieurl("https://lottiefiles.com/animations/confetti-TqjP7BwJ3E")
 
 # Language mapping
 LANGUAGE_MAPPING = {
@@ -79,7 +62,7 @@ def init_db():
     conn = sqlite3.connect('edugamify.db')
     c = conn.cursor()
     
-    # Create tables
+    # Create users table
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   username TEXT UNIQUE,
@@ -92,6 +75,7 @@ def init_db():
                   points INTEGER DEFAULT 0,
                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     
+    # Create chat history table
     c.execute('''CREATE TABLE IF NOT EXISTS chat_history
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   user_id INTEGER,
@@ -102,6 +86,7 @@ def init_db():
                   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                   FOREIGN KEY (user_id) REFERENCES users (id))''')
     
+    # Create analytics table
     c.execute('''CREATE TABLE IF NOT EXISTS analytics
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   user_id INTEGER,
@@ -111,6 +96,7 @@ def init_db():
                   date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                   FOREIGN KEY (user_id) REFERENCES users (id))''')
     
+    # Create gamification table
     c.execute('''CREATE TABLE IF NOT EXISTS gamification
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   user_id INTEGER,
@@ -119,6 +105,7 @@ def init_db():
                   earned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                   FOREIGN KEY (user_id) REFERENCES users (id))''')
     
+    # Create offline content table
     c.execute('''CREATE TABLE IF NOT EXISTS offline_content
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   title TEXT,
@@ -129,6 +116,7 @@ def init_db():
                   language TEXT,
                   download_count INTEGER DEFAULT 0)''')
     
+    # Create game scores table
     c.execute('''CREATE TABLE IF NOT EXISTS game_scores
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   user_id INTEGER,
@@ -147,7 +135,7 @@ def init_db():
                  ('Geometry Basics', 'Math', 'Game', 'geometry_game.html', 6, 'English'),
                  ('English Vocabulary', 'English', 'Flashcards', 'vocabulary_cards.pdf', 6, 'English'),
                  ('बीजगणित की मूल बातें', 'Math', 'PDF', 'algebra_basics_hindi.pdf', 6, 'Hindi'),
-                 ('प्रकৃতির বিস্ময়', 'Science', 'PDF', 'nature_wonders_bengali.pdf', 7, 'Bengali'),
+                 ('প্রকৃতির বিস্ময়', 'Science', 'PDF', 'nature_wonders_bengali.pdf', 7, 'Bengali'),
                  ('ଗଣିତ ମୌଳିକ', 'Math', 'PDF', 'math_basics_odia.pdf', 6, 'Odia')
               ''')
     
@@ -159,113 +147,118 @@ conn = init_db()
 model = setup_gemini()
 translator = setup_translator()
 
-# Custom CSS
+# Custom CSS for a light theme
 def local_css():
     st.markdown("""
         <style>
-        .main-header {
-            font-size: 3rem;
-            color: #4809b7;
-            text-align: center;
-            margin-bottom: 2rem;
-            animation: fadeIn 2s;
-        }
-        .sub-header {
-            font-size: 1.8rem;
-            color: #12438c;
-            margin-bottom: 1rem;
-        }
-        .card {
-            padding: 20px;
-            border-radius: 10px;
-            color: #ddfafd;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            background-color: rgb(6, 43, 67);
-            transition: transform 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        .sidebar .sidebar-content {
-            background-color: #020619;
-        }
-        .stButton>button {
-            background-color: #0e0227;
-            color: white;
-            border-radius: 8px;
-            padding: 10px 24px;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-        .stButton>button:hover {
-            background-color: #1a0642;
-            transform: scale(1.05);
-        }
-        .chat-message {
-            padding: 1.5rem;
-            color: #180539;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-message.user {
-            background-color: #E3F2FD;
-            margin-left: 20%;
-            color: #180539;
-        }
-        .chat-message.assistant {
-            background-color: #BBDEFB;
-            margin-right: 20%;
-            color: #180539;
-        }
-        .badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 15px;
-            background-color: #FFD700;
-            color: #000;
-            margin: 5px;
-            font-weight: bold;
-            animation: popIn 0.5s ease-out;
-        }
-        @keyframes popIn {
-            0% { transform: scale(0.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .progress-bar {
-            height: 20px;
-            background-color: #E0E0E0;
-            border-radius: 10px;
-            color: #180539;
-            margin: 10px 0;
-        }
-        .progress-fill {
-            height: 100%;
-            background-color: #4CAF50;
-            border-radius: 10px;
-            text-align: center;
-            color: white;
-            line-height: 20px;
-            animation: fillProgress 1s ease-in-out;
-        }
-        @keyframes fillProgress {
-            0% { width: 0; }
-            100% { width: var(--progress-width); }
-        }
-        .subject-card {
-            cursor: pointer;
-            color: #180539;
-            transition: all 0.3s ease;
-        }
-        .subject-card:hover {
-            transform: scale(1.05);
-            color: #32116b;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
+            .main-header {
+                font-size: 3rem;
+                color: #2c3e50;
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+            .sub-header {
+                font-size: 1.8rem;
+                color: #34495e;
+                margin-bottom: 1rem;
+            }
+            .card {
+                padding: 20px;
+                border-radius: 10px;
+                color: #2c3e50;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+                background-color: #f0f4f7;
+            }
+            .sidebar .sidebar-content {
+                background-color: #ecf0f1;
+            }
+            .stButton>button {
+                background-color: #3498db;
+                color: white;
+                border-radius: 8px;
+                padding: 10px 24px;
+                border: none;
+            }
+            .stButton>button:hover {
+                background-color: #2980b9;
+            }
+            .chat-message {
+                padding: 1.5rem;
+                color: #2c3e50;
+                border-radius: 0.5rem;
+                margin-bottom: 1rem;
+                display: flex;
+                flex-direction: column;
+            }
+            .chat-message.user {
+                background-color: #E3F2FD;
+                margin-left: 20%;
+            }
+            .chat-message.assistant {
+                background-color: #BBDEFB;
+                margin-right: 20%;
+            }
+            .badge {
+                display: inline-block;
+                padding: 5px 10px;
+                border-radius: 15px;
+                background-color: #FFD700;
+                color: #000;
+                margin: 5px;
+                font-weight: bold;
+            }
+            .progress-bar {
+                height: 20px;
+                background-color: #E0E0E0;
+                border-radius: 10px;
+                margin: 10px 0;
+            }
+            .progress-fill {
+                height: 100%;
+                background-color: #2ecc71;
+                border-radius: 10px;
+                text-align: center;
+                color: white;
+                line-height: 20px;
+            }
+            .subject-card {
+                cursor: pointer;
+                transition: transform 0.3s ease;
+            }
+            .subject-card:hover {
+                transform: scale(1.05);
+            }
+            .math-game-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+                margin: 15px 0;
+            }
+            .math-game-cell {
+                width: 60px;
+                height: 60px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                font-weight: bold;
+                background-color: #BBDEFB;
+                border: 2px solid #1E88E5;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+            .science-quiz-option {
+                padding: 10px;
+                margin: 5px 0;
+                background-color: #C8E6C9;
+                border: 1px solid #4CAF50;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+            .science-quiz-option:hover {
+                background-color: #A5D6A7;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -359,6 +352,7 @@ def get_gemini_response(prompt, user_context):
         return f"I'm having trouble responding right now. Please try again later. Error: {str(e)}"
 
 def analyze_sentiment(text):
+    # Simple sentiment analysis (in a real app, you'd use a proper NLP library)
     positive_words = ['good', 'great', 'awesome', 'excellent', 'happy', 'thanks', 'thank you', 'helpful', 'love', 'like']
     negative_words = ['bad', 'terrible', 'hate', 'difficult', 'hard', 'confused', 'problem', 'issue', 'don\'t understand']
     
@@ -379,8 +373,10 @@ def save_chat(user_id, message, response, subject):
     c.execute("INSERT INTO chat_history (user_id, message, response, subject, sentiment) VALUES (?, ?, ?, ?, ?)",
               (user_id, message, response, subject, sentiment))
     
+    # Award points for interaction
     c.execute("UPDATE users SET points = points + 5 WHERE id = ?", (user_id,))
     
+    # Check for badge achievements
     check_badge_achievements(user_id)
     
     conn.commit()
@@ -396,8 +392,10 @@ def update_analytics(user_id, subject, time_spent=1, problems_solved=1):
     c.execute("INSERT INTO analytics (user_id, subject, time_spent, problems_solved) VALUES (?, ?, ?, ?)",
               (user_id, subject, time_spent, problems_solved))
     
+    # Award points for learning
     c.execute("UPDATE users SET points = points + ? WHERE id = ?", (problems_solved * 10, user_id))
     
+    # Check for badge achievements
     check_badge_achievements(user_id)
     
     conn.commit()
@@ -411,18 +409,23 @@ def get_analytics(user_id):
 def check_badge_achievements(user_id):
     c = conn.cursor()
     
+    # Check total points
     c.execute("SELECT points FROM users WHERE id = ?", (user_id,))
     points = c.fetchone()[0]
     
+    # Check subjects covered
     c.execute("SELECT COUNT(DISTINCT subject) FROM analytics WHERE user_id = ?", (user_id,))
     subjects_covered = c.fetchone()[0]
     
+    # Check problems solved
     c.execute("SELECT SUM(problems_solved) FROM analytics WHERE user_id = ?", (user_id,))
     problems_solved = c.fetchone()[0] or 0
     
+    # Check games played
     c.execute("SELECT COUNT(*) FROM game_scores WHERE user_id = ?", (user_id,))
     games_played = c.fetchone()[0]
     
+    # Define badge criteria
     badges = [
         ("Quick Learner", "Earned 50 points", points >= 50 and points < 100),
         ("Knowledge Seeker", "Earned 100 points", points >= 100),
@@ -432,19 +435,16 @@ def check_badge_achievements(user_id):
         ("Game Master", "Played 5 educational games", games_played >= 5),
     ]
     
-    new_badge_earned = False
+    # Award new badges
     for badge_name, badge_desc, condition in badges:
         if condition:
+            # Check if user already has this badge
             c.execute("SELECT * FROM gamification WHERE user_id = ? AND badge_name = ?", (user_id, badge_name))
             if not c.fetchone():
                 c.execute("INSERT INTO gamification (user_id, badge_name, badge_description) VALUES (?, ?, ?)",
                          (user_id, badge_name, badge_desc))
                 conn.commit()
-                new_badge_earned = True
-    
-    if new_badge_earned:
-        st.balloons()
-        
+
 def get_badges(user_id):
     c = conn.cursor()
     c.execute("SELECT badge_name, badge_description, earned_date FROM gamification WHERE user_id = ? ORDER BY earned_date DESC", (user_id,))
@@ -461,10 +461,13 @@ def save_game_score(user_id, game_name, score, subject):
     c.execute("INSERT INTO game_scores (user_id, game_name, score, subject) VALUES (?, ?, ?, ?)",
               (user_id, game_name, score, subject))
     
+    # Award points for playing games
     c.execute("UPDATE users SET points = points + ? WHERE id = ?", (score // 10, user_id))
     
+    # Update analytics
     update_analytics(user_id, subject, time_spent=5, problems_solved=1)
     
+    # Check for badge achievements
     check_badge_achievements(user_id)
     
     conn.commit()
@@ -487,6 +490,7 @@ def math_quiz_game():
     if st.session_state.math_question < len(st.session_state.math_questions):
         question_data = st.session_state.math_questions[st.session_state.math_question]
         
+        # Translate question and options if needed
         user_lang = st.session_state.user['language']
         if user_lang != 'English':
             question = translate_from_english(question_data['question'], LANGUAGE_MAPPING[user_lang])
@@ -498,7 +502,7 @@ def math_quiz_game():
             answer = question_data['answer']
         
         st.markdown(f"<div class='game-container'>", unsafe_allow_html=True)
-        st.markdown(f"*Question {st.session_state.math_question + 1}:* {question}")
+        st.markdown(f"**Question {st.session_state.math_question + 1}:** {question}")
         
         col1, col2 = st.columns(2)
         
@@ -550,6 +554,7 @@ def math_quiz_game():
 def generate_math_questions():
     questions = []
     
+    # Grade-appropriate math questions
     if st.session_state.user['grade'] <= 8:
         questions = [
             {
@@ -621,6 +626,7 @@ def science_quiz_game():
     if st.session_state.science_question < len(st.session_state.science_questions):
         question_data = st.session_state.science_questions[st.session_state.science_question]
         
+        # Translate question and options if needed
         user_lang = st.session_state.user['language']
         if user_lang != 'English':
             question = translate_from_english(question_data['question'], LANGUAGE_MAPPING[user_lang])
@@ -632,7 +638,7 @@ def science_quiz_game():
             answer = question_data['answer']
         
         st.markdown(f"<div class='game-container'>", unsafe_allow_html=True)
-        st.markdown(f"*Question {st.session_state.science_question + 1}:* {question}")
+        st.markdown(f"**Question {st.session_state.science_question + 1}:** {question}")
         
         col1, col2 = st.columns(2)
         
@@ -684,6 +690,7 @@ def science_quiz_game():
 def generate_science_questions():
     questions = []
     
+    # Grade-appropriate science questions
     if st.session_state.user['grade'] <= 8:
         questions = [
             {
@@ -747,6 +754,7 @@ def memory_match_game():
     st.markdown("<h3 class='sub-header'>STEM Memory Match</h3>", unsafe_allow_html=True)
     
     if 'memory_cards' not in st.session_state:
+        # Initialize the memory game
         symbols = ['π', '√', '∞', 'α', 'β', '∫', '∑', 'Δ']
         st.session_state.memory_cards = symbols + symbols
         random.shuffle(st.session_state.memory_cards)
@@ -760,8 +768,9 @@ def memory_match_game():
     moves_text = translate_from_english("Moves", LANGUAGE_MAPPING[user_lang])
     matches_text = translate_from_english("Matches", LANGUAGE_MAPPING[user_lang])
     
-    st.markdown(f"{moves_text}:** {st.session_state.memory_moves} | *{matches_text}:* {st.session_state.memory_matches}/8")
+    st.markdown(f"**{moves_text}:** {st.session_state.memory_moves} | **{matches_text}:** {st.session_state.memory_matches}/8")
     
+    # Create the memory game grid
     cols = st.columns(4)
     for i in range(16):
         with cols[i % 4]:
@@ -778,6 +787,7 @@ def memory_match_game():
                         st.session_state.memory_flipped[i] = True
                         st.session_state.memory_moves += 1
                         
+                        # Check for match
                         if st.session_state.memory_cards[st.session_state.memory_first_selection] == st.session_state.memory_cards[i]:
                             st.session_state.memory_matched[st.session_state.memory_first_selection] = True
                             st.session_state.memory_matched[i] = True
@@ -786,13 +796,14 @@ def memory_match_game():
                         st.session_state.memory_first_selection = None
                     st.rerun()
     
+    # Check for game completion
     if st.session_state.memory_matches == 8:
         congrats_text = translate_from_english("🎉 Congratulations! You've matched all pairs!", LANGUAGE_MAPPING[user_lang])
         st.success(congrats_text)
         score = 100 - (st.session_state.memory_moves - 8) * 5
         score = max(score, 10)
         
-        score_text = translate_from_english(f"*Your score: {score}*", LANGUAGE_MAPPING[user_lang])
+        score_text = translate_from_english(f"**Your score: {score}**", LANGUAGE_MAPPING[user_lang])
         st.markdown(score_text)
         
         if st.button(translate_from_english("Save Score", LANGUAGE_MAPPING[user_lang])):
@@ -800,6 +811,7 @@ def memory_match_game():
             success_text = translate_from_english("Score saved! 🎯", LANGUAGE_MAPPING[user_lang])
             st.success(success_text)
             time.sleep(1)
+            # Reset the game
             st.session_state.memory_cards = None
             st.rerun()
 
@@ -831,9 +843,6 @@ def login_page():
         st.markdown("<h1 class='main-header'>Shiksha Yatra</h1>", unsafe_allow_html=True)
         st.markdown("<h3 class='sub-header'>Login to Your Account</h3>", unsafe_allow_html=True)
         
-        if LOTTIE_WELCOME:
-            st_lottie(LOTTIE_WELCOME, height=200, key="welcome")
-
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
@@ -867,9 +876,6 @@ def register_page():
         st.markdown("<h1 class='main-header'>Shiksha Yatra</h1>", unsafe_allow_html=True)
         st.markdown("<h3 class='sub-header'>Create New Account</h3>", unsafe_allow_html=True)
         
-        if LOTTIE_WELCOME:
-            st_lottie(LOTTIE_WELCOME, height=200, key="register")
-        
         with st.form("register_form"):
             name = st.text_input("Full Name")
             username = st.text_input("Username")
@@ -877,8 +883,8 @@ def register_page():
             grade = st.selectbox("Grade", options=list(range(6, 13)))
             school = st.text_input("School Name")
             language = st.selectbox("Preferred Language", 
-                                     ["English", "Hindi", "Odia", "Telugu", "Bengali", "Tamil", "Marathi", 
-                                      "Gujarati", "Kannada", "Malayalam", "Punjabi", "Urdu"])
+                                   ["English", "Hindi", "Odia", "Telugu", "Bengali", "Tamil", "Marathi", 
+                                    "Gujarati", "Kannada", "Malayalam", "Punjabi", "Urdu"])
             submitted = st.form_submit_button("Create Account")
             
             if submitted:
@@ -898,6 +904,7 @@ def dashboard_page():
     welcome_text = translate_from_english(f"Welcome, {st.session_state.user['name']}!", LANGUAGE_MAPPING[user_lang])
     st.markdown(f"<h1 class='main-header'>{welcome_text}</h1>", unsafe_allow_html=True)
     
+    # Display user stats
     col1, col2, col3, col4 = st.columns(4)
     analytics = get_analytics(st.session_state.user['id'])
     
@@ -928,6 +935,7 @@ def dashboard_page():
         st.metric(label=translate_from_english("Points", LANGUAGE_MAPPING[user_lang]), value=st.session_state.user['points'])
         st.markdown("</div>", unsafe_allow_html=True)
     
+    # Quick actions
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Quick Actions', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
     action_col1, action_col2, action_col3, action_col4 = st.columns(4)
     
@@ -951,6 +959,7 @@ def dashboard_page():
             st.session_state.page = "offline"
             st.rerun()
     
+    # Display subject-wise analytics
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Subject-wise Performance', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
     if analytics:
         df = pd.DataFrame(analytics, columns=['Subject', 'Time Spent', 'Problems Solved'])
@@ -967,10 +976,12 @@ def dashboard_page():
     else:
         st.info(translate_from_english("No analytics data yet. Start studying to see your progress!", LANGUAGE_MAPPING[user_lang]))
     
+    # Recent activity
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Recent Activity', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
     chat_history = get_chat_history(st.session_state.user['id'])
     if chat_history:
         for message, response, timestamp, subject in chat_history:
+            # Translate the message preview if needed
             if user_lang != 'English':
                 message_preview = translate_from_english(message[:100], LANGUAGE_MAPPING[user_lang])
             else:
@@ -989,7 +1000,7 @@ def subjects_page():
         {"name": "Mathematics", "icon": "🧮", "color": "#FF6B6B"},
         {"name": "Science", "icon": "🔬", "color": "#4ECDC4"},
         {"name": "Technology", "icon": "💻", "color": "#45B7D1"},
-        {"name": "Engineering", "icon": "⚙", "color": "#FFBE0B"},
+        {"name": "Engineering", "icon": "⚙️", "color": "#FFBE0B"},
         {"name": "English", "icon": "📚", "color": "#FF6B6B"},
         {"name": "Social Studies", "icon": "🌍", "color": "#4ECDC4"},
     ]
@@ -1018,35 +1029,45 @@ def chat_page():
     st.markdown(f"<h1 class='main-header'>{translate_from_english('AI Tutor', LANGUAGE_MAPPING[user_lang])} - {subject_translated}</h1>", unsafe_allow_html=True)
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Chat with your personal learning assistant', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
     
+    # Initialize chat history
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     
+    # Display chat history
     for i, (message, is_user, original_lang) in enumerate(st.session_state.chat_history):
         if is_user:
+            # For user messages, show in the original language
             display_message = message if original_lang == user_lang else translate_from_english(message, LANGUAGE_MAPPING[user_lang])
             st.markdown(f"<div class='chat-message user'><b>{translate_from_english('You', LANGUAGE_MAPPING[user_lang])}:</b> {display_message}</div>", unsafe_allow_html=True)
         else:
+            # For assistant messages, show in the user's language
             display_message = translate_from_english(message, LANGUAGE_MAPPING[user_lang])
             st.markdown(f"<div class='chat-message assistant'><b>EduBot:</b> {display_message}</div>", unsafe_allow_html=True)
     
+    # Chat input
     subject = st.session_state.get('current_subject', 'General')
     
     chat_placeholder = translate_from_english("Type your question here...", LANGUAGE_MAPPING[user_lang])
     user_input = st.chat_input(chat_placeholder)
     
     if user_input:
+        # Translate user input to English for processing
         if user_lang != 'English':
             user_input_english = translate_to_english(user_input, LANGUAGE_MAPPING[user_lang])
         else:
             user_input_english = user_input
         
+        # Add user message to chat history (store in original language)
         st.session_state.chat_history.append((user_input, True, user_lang))
         
+        # Get AI response
         with st.spinner(translate_from_english("EduBot is thinking...", LANGUAGE_MAPPING[user_lang])):
             response = get_gemini_response(user_input_english, st.session_state.user)
         
+        # Add AI response to chat history (store in English for consistency)
         st.session_state.chat_history.append((response, False, 'English'))
         
+        # Save to database (store original message and English response)
         save_chat(st.session_state.user['id'], user_input, response, subject)
         update_analytics(st.session_state.user['id'], subject, time_spent=2, problems_solved=1)
         
@@ -1061,6 +1082,7 @@ def games_page():
     st.markdown(f"<h1 class='main-header'>{translate_from_english('Educational Games', LANGUAGE_MAPPING[user_lang])}</h1>", unsafe_allow_html=True)
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Learn through fun games!', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
     
+    # Game selection
     games = [
         {"name": "Math Quiz", "icon": "🧮", "description": "Test your math skills with challenging questions", "subject": "Math"},
         {"name": "Science Quiz", "icon": "🔬", "description": "Explore science concepts with fun quizzes", "subject": "Science"},
@@ -1085,6 +1107,7 @@ def games_page():
                 st.session_state.current_game = game['name']
                 st.rerun()
     
+    # Display selected game
     if hasattr(st.session_state, 'current_game'):
         game_name = translate_from_english(st.session_state.current_game, LANGUAGE_MAPPING[user_lang])
         st.markdown(f"<h3 class='sub-header'>{game_name}</h3>", unsafe_allow_html=True)
@@ -1100,6 +1123,7 @@ def games_page():
             del st.session_state.current_game
             st.rerun()
     
+    # Display game scores
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Your Game Scores', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
     game_scores = get_game_scores(st.session_state.user['id'])
     if game_scores:
@@ -1172,14 +1196,15 @@ def profile_page():
     with col1:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader(translate_from_english("Personal Information", LANGUAGE_MAPPING[user_lang]))
-        st.write(f"{translate_from_english('Name', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['name']}")
-        st.write(f"{translate_from_english('Username', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['username']}")
-        st.write(f"{translate_from_english('Grade', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['grade']}")
-        st.write(f"{translate_from_english('School', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['school']}")
-        st.write(f"{translate_from_english('Language', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['language']}")
-        st.write(f"{translate_from_english('EduPoints', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['points']}")
+        st.write(f"**{translate_from_english('Name', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['name']}")
+        st.write(f"**{translate_from_english('Username', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['username']}")
+        st.write(f"**{translate_from_english('Grade', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['grade']}")
+        st.write(f"**{translate_from_english('School', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['school']}")
+        st.write(f"**{translate_from_english('Language', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['language']}")
+        st.write(f"**{translate_from_english('EduPoints', LANGUAGE_MAPPING[user_lang])}:** {st.session_state.user['points']}")
         st.markdown("</div>", unsafe_allow_html=True)
         
+        # Show learning statistics
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader(translate_from_english("Learning Statistics", LANGUAGE_MAPPING[user_lang]))
         analytics = get_analytics(st.session_state.user['id'])
@@ -1196,6 +1221,7 @@ def profile_page():
         st.markdown("</div>", unsafe_allow_html=True)
     
     with col2:
+        # Show badges
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader(translate_from_english("Your Badges", LANGUAGE_MAPPING[user_lang]))
         badges = get_badges(st.session_state.user['id'])
@@ -1211,6 +1237,7 @@ def profile_page():
             st.info(translate_from_english("You haven't earned any badges yet. Keep learning!", LANGUAGE_MAPPING[user_lang]))
         st.markdown("</div>", unsafe_allow_html=True)
         
+        # Show leaderboard
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader(translate_from_english("Top Learners", LANGUAGE_MAPPING[user_lang]))
         leaderboard = get_leaderboard()
@@ -1221,7 +1248,7 @@ def profile_page():
                 if name == st.session_state.user['name']:
                     st.success(translate_from_english("That's you!", LANGUAGE_MAPPING[user_lang]))
         else:
-            st.info(translate_from_english("No leaderboard data available.", LANGUAGE_MAPPING[user_lang]))
+            st.info(translate_from_english("No leaderboard data available.", LANGUAGE_L.MAP.PING[user_lang]))
         st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button(translate_from_english("Back to Dashboard", LANGUAGE_MAPPING[user_lang])):
@@ -1230,11 +1257,11 @@ def profile_page():
 
 def about_page():
     user_lang = st.session_state.user['language']
-    st.markdown(f"<h1 class='main-header'>{translate_from_english('About Shiksha Yatra', LANGUAGE_MAPPING[user_lang])}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 class='main-header'>{translate_from_english('About Rural EduGamify', LANGUAGE_MAPPING[user_lang])}</h1>", unsafe_allow_html=True)
     
     about_content = translate_from_english("""
     <h3>Empowering Rural Education Through Gamification</h3>
-    <p>Shiksha Yatra is an innovative platform designed to enhance learning outcomes for students in rural schools (grades 6-12), with a focus on STEM subjects. Our platform uses interactive games, multilingual content, and offline access to engage students with limited internet connectivity.</p>
+    <p>Rural EduGamify is a innovative platform designed to enhance learning outcomes for students in rural schools (grades 6-12), with a focus on STEM subjects. Our platform uses interactive games, multilingual content, and offline access to engage students with limited internet connectivity.</p>
     
     <h4>Key Features:</h4>
     <ul>
@@ -1255,6 +1282,7 @@ def about_page():
     
     st.markdown(f"<div class='card'>{about_content}</div>", unsafe_allow_html=True)
     
+    # Team information
     st.markdown(f"<h3 class='sub-header'>{translate_from_english('Our Team', LANGUAGE_MAPPING[user_lang])}</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     
@@ -1310,11 +1338,13 @@ def contact_page():
 def main():
     local_css()
     
+    # Initialize session state
     if "page" not in st.session_state:
         st.session_state.page = "login"
     if "user" not in st.session_state:
         st.session_state.user = None
     
+    # Sidebar navigation
     if st.session_state.user:
         user_lang = st.session_state.user['language']
         with st.sidebar:
@@ -1322,14 +1352,15 @@ def main():
             welcome_text = translate_from_english(f"Welcome, {st.session_state.user['name']}!", LANGUAGE_MAPPING[user_lang])
             st.write(welcome_text)
             
+            # Progress bar
             level_text = translate_from_english("Level 3", LANGUAGE_MAPPING[user_lang])
             st.markdown(f"<div class='progress-bar'><div class='progress-fill' style='width: 65%;'>{level_text}</div></div>", unsafe_allow_html=True)
             points_text = translate_from_english("EduPoints", LANGUAGE_MAPPING[user_lang])
-            st.write(f"{points_text}:** {st.session_state.user['points']}")
+            st.write(f"**{points_text}:** {st.session_state.user['points']}")
             
             st.divider()
             
-            if st.button(translate_from_english("🏠 Dashboard", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("🏠 Home", LANGUAGE_MAPPING[user_lang])):
                 st.session_state.page = "dashboard"
                 st.rerun()
             if st.button(translate_from_english("📚 Study Subjects", LANGUAGE_MAPPING[user_lang])):
@@ -1347,7 +1378,7 @@ def main():
             if st.button(translate_from_english("📊 Profile & Badges", LANGUAGE_MAPPING[user_lang])):
                 st.session_state.page = "profile"
                 st.rerun()
-            if st.button(translate_from_english("ℹ About", LANGUAGE_MAPPING[user_lang])):
+            if st.button(translate_from_english("ℹ️ About", LANGUAGE_MAPPING[user_lang])):
                 st.session_state.page = "about"
                 st.rerun()
             if st.button(translate_from_english("📞 Contact", LANGUAGE_MAPPING[user_lang])):
@@ -1359,6 +1390,7 @@ def main():
                 st.session_state.chat_history = []
                 st.rerun()
     
+    # Page routing
     if st.session_state.page == "login":
         login_page()
     elif st.session_state.page == "register":
@@ -1380,6 +1412,5 @@ def main():
     elif st.session_state.page == "contact":
         contact_page()
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
-
